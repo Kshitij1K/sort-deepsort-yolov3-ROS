@@ -66,7 +66,14 @@ def callback_image(data):
 	cv2.waitKey(3)
 
 def callback_odom(data):
+        try:
+                print (detections)
+        except (IndexError):
+                print ("Waiting for detections")
+                return
         
+        for boundingbox in detections:
+                
 
 def main():
     	global tracker
