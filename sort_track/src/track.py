@@ -14,7 +14,8 @@ from sort import sort
 from cv_bridge import CvBridge
 import cv2
 from sensor_msgs.msg import Image
-from sort_track.msg import IntList
+from nav_msgs.msg import Odometry
+from sort_track.msg import IntList,BBPose,BBPoses
 
 def get_parameters():
 	"""
@@ -64,33 +65,36 @@ def callback_image(data):
 	cv2.imshow("YOLO+SORT", cv_rgb)
 	cv2.waitKey(3)
 
+def callback_odom(data):
+        
 
 def main():
-    global tracker
-    global msg
-    msg = IntList()
-    while not rospy.is_shutdown():
-	#Initialize ROS node
-        rospy.init_node('sort_tracker', anonymous=False)
-	rate = rospy.Rate(10)
-        # Get the parameters
-        (camera_topic, detection_topic, tracker_topic, cost_threshold, max_age, min_hits) = get_parameters()
-	tracker = sort.Sort(max_age=max_age, min_hits=min_hits) #create instance of the SORT tracker
-	cost_threshold = cost_threshold
-	#Subscribe to image topic
-	image_sub = rospy.Subscriber(camera_topic,Image,callback_image)
-        #Subscribe to darknet_ros to get BoundingBoxes from YOLOv3
-	sub_detection = rospy.Subscriber(detection_topic, BoundingBoxes , callback_det)
-	#Publish results of object tracking
-	pub_trackers = rospy.Publisher(tracker_topic, IntList, queue_size=10)
-	#print(msg) #Testing msg that is published
-	#pub_trackers.publish(msg)
-	rate.sleep()
-	rospy.spin()
+    	global tracker
+    	global msg
+    	msg = IntList()
+    	while not rospy.is_shutdown():
+		#Initialize ROS node
+                rospy.init_node('sort_tracker', anonymous=False)
+		rate = rospy.Rate(10)
+		# Get the parameters
+		(camera_topic, detection_topic, tracker_topic, cost_threshold, max_age, min_hits) = get_parameters()
+		tracker = sort.Sort(max_age=max_age, min_hits=min_hits) #create instance of the SORT tracker
+		cost_threshold = cost_threshold
+		#Subscribe to image topic
+		image_sub = rospy.Subscriber(camera_topic,Image,callback_image)
+		#Subscribe to darknet_ros to get BoundingBoxes from YOLOv3
+		sub_detection = rospy.Subscriber(detection_topic, BoundingBoxes , callback_det)
+		#Publish results of object tracking
+		pub_trackers = rospy.Publisher(tracker_topic, IntList, queue_size=10)
+		#print(msg) #Testing msg that is published
+		#pub_trackers.publish(msg)
+        	sub_odometry = rospy.Subscriber("Odometry",Odometry,callback_odom)
+		rate.sleep()
+		rospy.spin()
 
 
 if __name__ == '__main__':
-    try :
-        main()
-    except rospy.ROSInterruptException:
-        pass
+        try :
+		main()
+        except rospy.ROSInterruptException:
+		pass

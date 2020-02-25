@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  sensor_msgs
   cv_bridge
   message_generation
 )
@@ -52,6 +53,8 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   IntList.msg
+  BBPose.msg
+  BBPoses.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -111,6 +114,7 @@ catkin_package(
     roscpp 
     rospy
     std_msgs
+    sensor_msgs
     cv_bridge
     message_runtime
 
