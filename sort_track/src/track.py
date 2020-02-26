@@ -29,8 +29,8 @@ def get_parameters():
 	cost_threhold = rospy.get_param('~cost_threhold')
 	min_hits = rospy.get_param('~min_hits')
 	max_age = rospy.get_param('~max_age')
-        camera_parameters = rospy.get_param('~camera_parameters')
-        print (camera_parameters)
+	camera_parameters = rospy.get_param('~camera_parameters')
+	print(camera_parameters)
 
 	return (camera_topic, detection_topic, tracker_topic, cost_threhold, max_age, min_hits, camera_parameters)
 
@@ -70,31 +70,34 @@ def callback_image(data):
 	cv2.waitKey(3)
 
 def callback_odom(data):
-        try:
-                print (detections)
-        except (IndexError):
-                print ("Waiting for detections")
-                return
-        height = data.pose.pose.position.z
-        scale_up = np.array([[height,0,0],[0,height,0],[0,0,height]])
+	try:
+		print (detections)
+	except (IndexError):
+		print ("Waiting for detections")
+		return
+	height = data.pose.pose.position.z
+	scale_up = np.array([[height,0,0],[0,height,0],[0,0,height]])
         # cam_matrix = np.array([[(camera_parameters['camera_matrix'])['data'],0,0],[0,height,0],[0,0,height]])
-        cam_matrix = np.reshape(np.array((camera_parameters['camera_matrix']))
-        # print (camera_parameters)
-        
-        for boundingbox in detections:
-		center_point = [int((track[0][0]+track[0][2])/2),int((track[0][1]+track[0][3])/2)]
+	inverse_cam_matrix = np.linalg.inv(np.reshape(np.array(camera_parameters['camera_matrix']['data']), (camera_parameters['camera_matrix']['rows'],camera_parameters['camera_matrix']['cols'])))
+	
+	# print (cam_matrix)
+	for box in track:
+		img_vec = np.array([[int((track[0][0]+track[0][2])/2)],[int((track[0][1]+track[0][3])/2)],[1]])
+
+		print (center_point)
 			
                 
 
 def main():
-    	global tracker
-    	global msg
-    	msg = IntList()
-    	while not rospy.is_shutdown():
+	global tracker
+	global msg
+	msg = IntList()
+	while not rospy.is_shutdown():
 		#Initialize ROS node
-                rospy.init_node('sort_tracker', anonymous=False)
+		rospy.init_node('sort_tracker', anonymous=False)
 		rate = rospy.Rate(10)
 		# Get the parameters
+		global camera_parameters
 		(camera_topic, detection_topic, tracker_topic, cost_threshold, max_age, min_hits,camera_parameters) = get_parameters()
 		tracker = sort.Sort(max_age=max_age, min_hits=min_hits) #create instance of the SORT tracker
 		cost_threshold = cost_threshold
@@ -106,13 +109,13 @@ def main():
 		pub_trackers = rospy.Publisher(tracker_topic, IntList, queue_size=10)
 		#print(msg) #Testing msg that is published
 		#pub_trackers.publish(msg)
-        	sub_odometry = rospy.Subscriber("Odometry",Odometry,callback_odom)
+		sub_odometry = rospy.Subscriber("Odometry",Odometry,callback_odom)
 		rate.sleep()
 		rospy.spin()
 
 
 if __name__ == '__main__':
-        try :
+	try :
 		main()
-        except rospy.ROSInterruptException:
+	except rospy.ROSInterruptException:
 		pass

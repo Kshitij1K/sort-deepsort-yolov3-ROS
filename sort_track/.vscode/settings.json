@@ -1,0 +1,9 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/kshitij/ROS_workspaces/catkin_Ws/devel/lib/python2.7/dist-packages",
+        "/opt/ros/melodic/lib/python2.7/dist-packages",
+        "/opt/ros/melodic/lib",
+        "/usr/lib/python-2.7/dist-packages"
+    ],
+    "editor.detectIndentation": false
+}

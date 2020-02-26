@@ -9,9 +9,9 @@ from os import path
 
 if __name__ == "__main__":
         rospy.init_node('sort_tracker', anonymous=False)
-        # image_pub = rospy.Publisher("usb_cam/image_raw",Image,queue_size=10)
+        image_pub = rospy.Publisher("usb_cam/image_raw",Image,queue_size=10)
 	# camera_parameters = rospy.get_param("camera_parameters")
-        print (camera_parameters)
+        # print (camera_parameters)
 
         cap = cv2.VideoCapture(path.expanduser('~')+'/Downloads/DJI_0012.MP4')
         bridge = CvBridge()
