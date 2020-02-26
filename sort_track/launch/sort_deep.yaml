@@ -19,6 +19,8 @@ camera_parameters:
   image_width: 640
   image_height: 480
   camera_name: camera
+  translation : [0, 0, 0]
+  rotation : [0, -1, 0, -1, 0, 0, 0, 0, -1]
   camera_matrix:
     rows: 3
     cols: 3

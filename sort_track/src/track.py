@@ -77,12 +77,20 @@ def callback_odom(data):
 		return
 	height = data.pose.pose.position.z
 	scale_up = np.array([[height,0,0],[0,height,0],[0,0,height]])
-        # cam_matrix = np.array([[(camera_parameters['camera_matrix'])['data'],0,0],[0,height,0],[0,0,height]])
+	quad_to_glob = (np.quaternion(data.pose.pose.orientation.x,data.pose.pose.orientation.y,data.pose.pose.orientation.z,data.pose.pose.orientation.w)).as_rotation_matrix()
+	poses = BBPoses()
+    # cam_matrix = np.array([[(camera_parameters['camera_matrix'])['data'],0,0],[0,height,0],[0,0,height]])
 	
 	# print (cam_matrix)
 	for box in track:
 		img_vec = np.array([[int((track[0][0]+track[0][2])/2)],[int((track[0][1]+track[0][3])/2)],[1]])
-
+		glob_coord = quad_to_glob*((cam_to_quad*scale_up*inverse_cam_matrix*img_vec) + tcam)
+		box = BBPose()
+		box.pose[0] = glob_coord.item(0)
+		box.pose[1] = glob_coord.item(1)
+		box.pose[2] = glob_coord.item(2)
+		poses.append(box)
+	pub_bbposes.publish(poses)
 		# print (img_vec)
 			
                 
@@ -91,15 +99,17 @@ def main():
 	global tracker
 	global msg
 	msg = IntList()
-	global inverse_cam_matrix
-	inverse_cam_matrix = np.linalg.inv(np.reshape(np.array(camera_parameters['camera_matrix']['data']), (camera_parameters['camera_matrix']['rows'],camera_parameters['camera_matrix']['cols'])))
-    	#Initialize ROS node
+	global inverse_cam_matrix, cam_to_quad, tcam
+    #Initialize ROS node
 	rospy.init_node('sort_tracker', anonymous=False)
 	rate = rospy.Rate(10)
 
 	# Get the parameters
 	global camera_parameters
 	(camera_topic, detection_topic, tracker_topic, cost_threshold, max_age, min_hits,camera_parameters) = get_parameters()
+	inverse_cam_matrix = np.linalg.inv(np.reshape(np.array(camera_parameters['camera_matrix']['data']), (camera_parameters['camera_matrix']['rows'],camera_parameters['camera_matrix']['cols'])))
+	cam_to_quad = np.linalg.inv(np.reshape(np.array(camera_parameters['camera_rotation']),(3,3)))
+	tcam = np.reshape(np.array(camera_parameters['camera_translation']),(3,1))
 	tracker = sort.Sort(max_age=max_age, min_hits=min_hits) #create instance of the SORT tracker
 	cost_threshold = cost_threshold
 	#Subscribe to image topic
@@ -111,6 +121,8 @@ def main():
 	#print(msg) #Testing msg that is published
 	#pub_trackers.publish(msg)
 	sub_odometry = rospy.Subscriber("Odometry",Odometry,callback_odom) 
+	global pub_bbposes
+	pub_bbposes = rospy.Publisher("BBposes",BBPoses,queue_size=10)
 	rospy.spin()
 
 
