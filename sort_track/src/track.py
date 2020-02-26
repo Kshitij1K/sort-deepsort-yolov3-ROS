@@ -23,13 +23,17 @@ def get_parameters():
 	Returns tuple
 	"""
 	camera_topic = rospy.get_param("~camera_topic")
+        # print (camera_topic)
 	detection_topic = rospy.get_param("~detection_topic")
 	tracker_topic = rospy.get_param('~tracker_topic')
 	cost_threhold = rospy.get_param('~cost_threhold')
 	min_hits = rospy.get_param('~min_hits')
 	max_age = rospy.get_param('~max_age')
+        camera_parameters = rospy.get_param('~camera_parameters')
+        print (camera_parameters)
 
-	return (camera_topic, detection_topic, tracker_topic, cost_threhold, max_age, min_hits)
+	return (camera_topic, detection_topic, tracker_topic, cost_threhold, max_age, min_hits, camera_parameters)
+
 
 
 def callback_det(data):
@@ -71,8 +75,15 @@ def callback_odom(data):
         except (IndexError):
                 print ("Waiting for detections")
                 return
+        height = data.pose.pose.position.z
+        scale_up = np.array([[height,0,0],[0,height,0],[0,0,height]])
+        # cam_matrix = np.array([[(camera_parameters['camera_matrix'])['data'],0,0],[0,height,0],[0,0,height]])
+        cam_matrix = np.reshape(np.array((camera_parameters['camera_matrix']))
+        # print (camera_parameters)
         
         for boundingbox in detections:
+		center_point = [int((track[0][0]+track[0][2])/2),int((track[0][1]+track[0][3])/2)]
+			
                 
 
 def main():
@@ -84,7 +95,7 @@ def main():
                 rospy.init_node('sort_tracker', anonymous=False)
 		rate = rospy.Rate(10)
 		# Get the parameters
-		(camera_topic, detection_topic, tracker_topic, cost_threshold, max_age, min_hits) = get_parameters()
+		(camera_topic, detection_topic, tracker_topic, cost_threshold, max_age, min_hits,camera_parameters) = get_parameters()
 		tracker = sort.Sort(max_age=max_age, min_hits=min_hits) #create instance of the SORT tracker
 		cost_threshold = cost_threshold
 		#Subscribe to image topic
