@@ -91,11 +91,11 @@ def callback_odom(data):
 	scale_up = np.array([[height,0,0],[0,height,0],[0,0,height]])
 	quad_to_glob = quaternion.as_rotation_matrix(np.quaternion(data.pose.pose.orientation.x,data.pose.pose.orientation.y,data.pose.pose.orientation.z,data.pose.pose.orientation.w))
 	poses_list = []
-    # cam_matrix = np.array([[(camera_parameters['camera_matrix'])['data'],0,0],[0,height,0],[0,0,height]])
+    	# cam_matrix = np.array([[(camera_parameters['camera_matrix'])['data'],0,0],[0,height,0],[0,0,height]])
 	
 	# print (cam_matrix)
 	for box in track:
-		img_vec = np.array([[int((track[0][0]+track[0][2])/2)],[int((track[0][1]+track[0][3])/2)],[1]])
+		img_vec = np.array([[int((detections[0][0]+detections[0][2])/2)],[int((detections[0][1]+detections[0][3])/2)],[1]])
 		glob_coord = np.dot(quad_to_glob,((np.dot(cam_to_quad,np.dot(scale_up,np.dot(inverse_cam_matrix,img_vec)))) + tcam))
 		box = BBPose()
 		box.pose[0] = glob_coord.item(0)
@@ -110,32 +110,36 @@ def callback_odom(data):
 		
 
 def main():
-    global tracker
-    global encoder
-    global msg
-    msg = IntList()
-    max_cosine_distance = 0.2
-    nn_budget = 100
-    metric = nn_matching.NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
-    tracker = Tracker(metric)
-    model_filename = "/home/ilyas/darknetros_sort/src/sort_track/src/deep_sort/model_data/mars-small128.pb" #Change it to your directory
-    encoder = gdet.create_box_encoder(model_filename)
-    #Initialize ROS node
-    rospy.init_node('sort_tracker', anonymous=True)
-    rate = rospy.Rate(10)
-    # Get the parameters
-    (camera_topic, detection_topic, tracker_topic) = get_parameters()
-    #Subscribe to image topic
-    image_sub = rospy.Subscriber(camera_topic,Image,callback_image)
-    #Subscribe to darknet_ros to get BoundingBoxes from YOLOv3
-    sub_detection = rospy.Subscriber(detection_topic, BoundingBoxes , callback_det)
-    while not rospy.is_shutdown():
-	#Publish results of object tracking
-    	pub_trackers = rospy.Publisher(tracker_topic, IntList, queue_size=10)
-	print(msg)
-	pub_trackers.publish(msg)
-	rate.sleep()
-	#rospy.spin()
+	global tracker
+	global encoder
+	global msg
+	msg = IntList()
+	max_cosine_distance = 0.2
+	nn_budget = 100
+	metric = nn_matching.NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
+	tracker = Tracker(metric)
+	model_filename = "/home/ilyas/darknetros_sort/src/sort_track/src/deep_sort/model_data/mars-small128.pb" #Change it to your directory
+	encoder = gdet.create_box_encoder(model_filename)
+	#Initialize ROS node
+	rospy.init_node('sort_tracker', anonymous=True)
+	rate = rospy.Rate(10)
+	# Get the parameters
+	global camera_parameters
+	(camera_topic, detection_topic, tracker_topic, cost_threshold, max_age, min_hits,camera_parameters) = get_parameters()
+	inverse_cam_matrix = np.linalg.inv(np.reshape(np.array(camera_parameters['camera_matrix']['data']), (camera_parameters['camera_matrix']['rows'],camera_parameters['camera_matrix']['cols'])))
+	cam_to_quad = np.linalg.inv(np.reshape(np.array(camera_parameters['rotation']),(3,3)))
+	tcam = np.reshape(np.array(camera_parameters['translation']),(3,1))
+	#Subscribe to image topic
+	image_sub = rospy.Subscriber(camera_topic,Image,callback_image)
+	#Subscribe to darknet_ros to get BoundingBoxes from YOLOv3
+	sub_detection = rospy.Subscriber(detection_topic, BoundingBoxes , callback_det)
+	while not rospy.is_shutdown():
+		#Publish results of object tracking
+		pub_trackers = rospy.Publisher(tracker_topic, IntList, queue_size=10)
+		print(msg)
+		pub_trackers.publish(msg)
+		rate.sleep()
+		#rospy.spin()
 
 
 if __name__ == '__main__':
