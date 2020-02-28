@@ -27,7 +27,11 @@ def get_parameters():
 	camera_topic = rospy.get_param("~camera_topic")
 	detection_topic = rospy.get_param("~detection_topic")
 	tracker_topic = rospy.get_param('~tracker_topic')
-	return (camera_topic, detection_topic, tracker_topic)
+	cost_threhold = rospy.get_param('~cost_threhold')
+	min_hits = rospy.get_param('~min_hits')
+	max_age = rospy.get_param('~max_age')
+	camera_parameters = rospy.get_param('~camera_parameters')
+	return (camera_topic, detection_topic, tracker_topic, cost_threhold, max_age, min_hits, camera_parameters) 
 
 def callback_det(data):
 	global detections
@@ -76,6 +80,33 @@ def callback_image(data):
 	
 	cv2.imshow("YOLO+SORT", cv_rgb)
 	cv2.waitKey(3)
+
+def callback_odom(data):
+	# try:
+	# 	print (track)
+	# except (IndexError):
+	# 	print ("Waiting for detections")
+	# 	return
+	height = data.pose.pose.position.z
+	scale_up = np.array([[height,0,0],[0,height,0],[0,0,height]])
+	quad_to_glob = quaternion.as_rotation_matrix(np.quaternion(data.pose.pose.orientation.x,data.pose.pose.orientation.y,data.pose.pose.orientation.z,data.pose.pose.orientation.w))
+	poses_list = []
+    # cam_matrix = np.array([[(camera_parameters['camera_matrix'])['data'],0,0],[0,height,0],[0,0,height]])
+	
+	# print (cam_matrix)
+	for box in track:
+		img_vec = np.array([[int((track[0][0]+track[0][2])/2)],[int((track[0][1]+track[0][3])/2)],[1]])
+		glob_coord = np.dot(quad_to_glob,((np.dot(cam_to_quad,np.dot(scale_up,np.dot(inverse_cam_matrix,img_vec)))) + tcam))
+		box = BBPose()
+		box.pose[0] = glob_coord.item(0)
+		box.pose[1] = glob_coord.item(1)
+		box.pose[2] = glob_coord.item(2)
+		poses_list.append(box)
+		print (glob_coord)
+
+	poses = BBPoses(poses_list)
+	pub_bbposes.publish(poses)
+		# print (img_vec)
 		
 
 def main():
