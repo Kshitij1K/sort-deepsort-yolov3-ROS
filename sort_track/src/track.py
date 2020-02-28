@@ -9,13 +9,16 @@ No delay here
 
 import rospy
 import numpy as np
+import quaternion
 from darknet_ros_msgs.msg import BoundingBoxes
 from sort import sort 
 from cv_bridge import CvBridge
 import cv2
 from sensor_msgs.msg import Image
 from nav_msgs.msg import Odometry
-from sort_track.msg import IntList,BBPose,BBPoses
+from sort_track.msg import IntList
+from sort_track.msg import BBPose
+from sort_track.msg import BBPoses
 
 def get_parameters():
 	"""
@@ -23,15 +26,12 @@ def get_parameters():
 	Returns tuple
 	"""
 	camera_topic = rospy.get_param("~camera_topic")
-        # print (camera_topic)
 	detection_topic = rospy.get_param("~detection_topic")
 	tracker_topic = rospy.get_param('~tracker_topic')
 	cost_threhold = rospy.get_param('~cost_threhold')
 	min_hits = rospy.get_param('~min_hits')
 	max_age = rospy.get_param('~max_age')
 	camera_parameters = rospy.get_param('~camera_parameters')
-	print(camera_parameters)
-
 	return (camera_topic, detection_topic, tracker_topic, cost_threhold, max_age, min_hits, camera_parameters)
 
 
@@ -53,10 +53,11 @@ def callback_det(data):
 	track = trackers
 	msg.data = track
 def callback_image(data):
-
 	#Display Image
 	bridge = CvBridge()
 	cv_rgb = bridge.imgmsg_to_cv2(data, "bgr8")
+	if (np.shape(cv_rgb) == ()):
+        	return
 	#TO DO: FIND BETTER AND MORE ACCURATE WAY TO SHOW BOUNDING BOXES!!
 	#Detection bounding box
 	cv2.rectangle(cv_rgb, (int(detections[0][0]), int(detections[0][1])), (int(detections[0][2]), int(detections[0][3])), (100, 255, 50), 1)
@@ -70,26 +71,29 @@ def callback_image(data):
 	cv2.waitKey(3)
 
 def callback_odom(data):
-	try:
-		print (detections)
-	except (IndexError):
-		print ("Waiting for detections")
-		return
+	# try:
+	# 	print (track)
+	# except (IndexError):
+	# 	print ("Waiting for detections")
+	# 	return
 	height = data.pose.pose.position.z
 	scale_up = np.array([[height,0,0],[0,height,0],[0,0,height]])
-	quad_to_glob = (np.quaternion(data.pose.pose.orientation.x,data.pose.pose.orientation.y,data.pose.pose.orientation.z,data.pose.pose.orientation.w)).as_rotation_matrix()
-	poses = BBPoses()
+	quad_to_glob = quaternion.as_rotation_matrix(np.quaternion(data.pose.pose.orientation.x,data.pose.pose.orientation.y,data.pose.pose.orientation.z,data.pose.pose.orientation.w))
+	poses_list = []
     # cam_matrix = np.array([[(camera_parameters['camera_matrix'])['data'],0,0],[0,height,0],[0,0,height]])
 	
 	# print (cam_matrix)
 	for box in track:
 		img_vec = np.array([[int((track[0][0]+track[0][2])/2)],[int((track[0][1]+track[0][3])/2)],[1]])
-		glob_coord = quad_to_glob*((cam_to_quad*scale_up*inverse_cam_matrix*img_vec) + tcam)
+		glob_coord = np.dot(quad_to_glob,((np.dot(cam_to_quad,np.dot(scale_up,np.dot(inverse_cam_matrix,img_vec)))) + tcam))
 		box = BBPose()
 		box.pose[0] = glob_coord.item(0)
 		box.pose[1] = glob_coord.item(1)
 		box.pose[2] = glob_coord.item(2)
-		poses.append(box)
+		poses_list.append(box)
+		print (glob_coord)
+
+	poses = BBPoses(poses_list)
 	pub_bbposes.publish(poses)
 		# print (img_vec)
 			
@@ -108,8 +112,8 @@ def main():
 	global camera_parameters
 	(camera_topic, detection_topic, tracker_topic, cost_threshold, max_age, min_hits,camera_parameters) = get_parameters()
 	inverse_cam_matrix = np.linalg.inv(np.reshape(np.array(camera_parameters['camera_matrix']['data']), (camera_parameters['camera_matrix']['rows'],camera_parameters['camera_matrix']['cols'])))
-	cam_to_quad = np.linalg.inv(np.reshape(np.array(camera_parameters['camera_rotation']),(3,3)))
-	tcam = np.reshape(np.array(camera_parameters['camera_translation']),(3,1))
+	cam_to_quad = np.linalg.inv(np.reshape(np.array(camera_parameters['rotation']),(3,3)))
+	tcam = np.reshape(np.array(camera_parameters['translation']),(3,1))
 	tracker = sort.Sort(max_age=max_age, min_hits=min_hits) #create instance of the SORT tracker
 	cost_threshold = cost_threshold
 	#Subscribe to image topic
