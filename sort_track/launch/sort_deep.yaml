@@ -8,13 +8,25 @@ detection_topic: "/darknet_ros/bounding_boxes"
 # Set your output topic here
 tracker_topic: "/sort_track_deep"
 
+# Threshold for Costs between detections and tracks
+cost_threhold: 15
 
+# min_hits
+min_hits: 1
+
+# max age
+max_age: 5
+
+#whether to publish bounding box image or not
+pub_image: true
+
+#image parameters
 image_view:
 
   enable_opencv: true
   wait_key_delay: 1
   enable_console_output: true
-
+#camera parameters
 camera_parameters:
   image_width: 640
   image_height: 480
